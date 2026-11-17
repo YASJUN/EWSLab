@@ -1,41 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context="xyz.ckkpd.ewsparserapp.MainActivity">
-
-    <TextView
-        android:id="@+id/decoded_string"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="0"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.502"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.58" />
-
-    <TextView
-        android:id="@+id/decoded_length"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="デコードの結果がここに表示されます"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text='"try again" の場合は最初の音から読み直させてください'
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.662" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/root" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/app_name" android:textSize="30sp" android:textStyle="bold" android:textColor="@color/ink" android:accessibilityHeading="true" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/subtitle" android:textSize="14sp" android:textColor="@color/muted" android:layout_marginTop="4dp" />
+        <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/idle" android:textSize="15sp" android:textColor="@color/accent" android:accessibilityLiveRegion="polite" />
+        <LinearLayout style="?android:attr/buttonBarStyle" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="12dp" android:baselineAligned="false">
+            <Button style="?android:attr/buttonBarButtonStyle" android:id="@+id/startReceive" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="2" android:minHeight="48dp" android:text="@string/start" />
+            <Button style="?android:attr/buttonBarButtonStyle" android:id="@+id/stopReceive" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:minHeight="48dp" android:layout_marginStart="8dp" android:enabled="false" android:text="@string/stop" />
+        </LinearLayout>
+        <Button android:id="@+id/importWav" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/import_wav" />
+        <Button android:id="@+id/openSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/settings" android:visibility="gone" />
+        <ProgressBar android:id="@+id/level" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="8dp" android:layout_marginTop="16dp" android:max="100" android:importantForAccessibility="no" />
+        <TextView android:id="@+id/levelText" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/level_initial" android:textSize="13sp" android:textColor="@color/muted" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:padding="20dp" android:orientation="vertical" android:background="@drawable/panel">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/last_frame" android:textSize="13sp" android:textColor="@color/muted" android:accessibilityHeading="true" />
+            <TextView android:id="@+id/signalState" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/empty" android:textSize="21sp" android:textStyle="bold" android:textColor="@color/accent" />
+            <TextView style="@style/FieldLabel" android:text="@string/area_label" />
+            <TextView android:id="@+id/areaValue" style="@style/FieldValue" android:text="@string/dash" />
+            <TextView style="@style/FieldLabel" android:text="@string/time_label" />
+            <TextView android:id="@+id/timeValue" style="@style/FieldValue" android:text="@string/dash" />
+            <TextView style="@style/FieldLabel" android:text="@string/flag_label" />
+            <TextView android:id="@+id/flagValue" style="@style/FieldValue" android:text="@string/dash" />
+            <TextView style="@style/FieldLabel" android:text="@string/raw_label" />
+            <TextView android:id="@+id/rawValue" style="@style/FieldValue" android:textSize="12sp" android:fontFamily="monospace" android:text="@string/dash" />
+        </LinearLayout>
+        <TextView style="@style/FieldLabel" android:layout_marginTop="24dp" android:text="@string/history_label" android:accessibilityHeading="true" />
+        <TextView android:id="@+id/history" style="@style/FieldValue" android:textSize="13sp" android:text="@string/no_history" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:text="@string/notes" android:textSize="13sp" android:textColor="@color/muted" />
+    </LinearLayout>
+</ScrollView>

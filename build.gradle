@@ -1,1 +1,12 @@
 plugins { id 'com.android.application' version '8.13.0' apply false }
+
+// Optional ASCII-only output path for Windows JVMs with legacy native encodings.
+allprojects {
+    if (providers.gradleProperty('buildRoot').isPresent()) {
+        def target = file(providers.gradleProperty('buildRoot').get() + '/' + project.name).canonicalFile
+        if (projectDir.canonicalFile.toPath().startsWith(target.toPath())) {
+            throw new GradleException('buildRoot must not put build outputs over the source checkout')
+        }
+        layout.buildDirectory.set(target)
+    }
+}

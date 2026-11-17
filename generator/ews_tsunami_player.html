@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JMA VTSE41/VTSE51 EWS 协议与音频实验台 v4</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #131822;
+    --panel-border: #232c3d;
+    --text: #e2e8f0;
+    --muted: #8b9bb4;
+    --major: #a855f7;
+    --major-bg: rgba(168, 85, 247, 0.16);
+    --warning: #ef4444;
+    --warning-bg: rgba(239, 68, 68, 0.16);
+    --advisory: #eab308;
+    --advisory-bg: rgba(234, 179, 8, 0.14);
+    --forecast: #38bdf8;
+    --safe: #10b981;
+    --accent: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", monospace, sans-serif;
+    line-height: 1.5;
+    padding: 16px;
+  }
+  .container { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  header {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 20px;
+    gap: 12px;
+  }
+  .title-group h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.04em; display: flex; align-items: center; gap: 10px; }
+  .badge-std { font-size: 0.72rem; background: #1e293b; color: #93c5fd; border: 1px solid #334155; padding: 2px 8px; border-radius: 4px; }
+  .preset-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button, label.btn-upload {
+    background: #1e293b; color: var(--text); border: 1px solid #334155;
+    padding: 7px 13px; border-radius: 6px; font-size: 0.84rem; cursor: pointer;
+    transition: all 0.15s ease; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+  }
+  button:hover, label.btn-upload:hover { background: #293548; border-color: #475569; }
+  button.active { background: var(--accent); border-color: #60a5fa; color: #fff; }
+  button.btn-fire {
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    border-color: #f87171; color: #fff; font-size: 0.92rem; padding: 9px 18px;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.35);
+  }
+  button.btn-fire:hover { filter: brightness(1.1); }
+  button.btn-end { background: #0f766e; border-color: #2dd4bf; color: #fff; }
+  button.btn-stop { background: #334155; border-color: #64748b; }
+
+  .banner {
+    border-radius: 10px; padding: 16px 20px; border: 1px solid var(--panel-border);
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;
+  }
+  .banner.level-53 { background: var(--major-bg); border-color: var(--major); }
+  .banner.level-51 { background: var(--warning-bg); border-color: var(--warning); }
+  .banner.level-62 { background: var(--advisory-bg); border-color: var(--advisory); }
+  .banner.level-none { background: var(--panel); }
+
+  .banner-grade {
+    font-size: 1.35rem; font-weight: 800; padding: 4px 12px; border-radius: 6px; letter-spacing: 0.05em;
+  }
+  .grade-53 { background: var(--major); color: #fff; }
+  .grade-51 { background: var(--warning); color: #fff; }
+  .grade-62 { background: var(--advisory); color: #000; }
+  .grade-71 { background: var(--forecast); color: #000; }
+
+  .grid-main { display: grid; grid-template-columns: 1.18fr 0.82fr; gap: 16px; }
+  @media (max-width: 960px) { .grid-main { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--panel-border); padding-bottom: 8px;
+    font-size: 0.9rem; font-weight: 700; color: #cbd5e1;
+  }
+
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; }
+  .meta-item { background: #0f131c; border: 1px solid #1e2636; border-radius: 6px; padding: 8px 10px; }
+  .meta-label { font-size: 0.72rem; color: var(--muted); }
+  .meta-val { font-size: 0.9rem; font-weight: 700; margin-top: 2px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .controls-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #0f131c; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e2636; }
+  .control-field { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+  select, input[type="number"], input[type="range"] {
+    background: #1a2232; color: var(--text); border: 1px solid #334155; border-radius: 4px; padding: 4px 8px; font-size: 0.82rem;
+  }
+
+  .frame-words { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; }
+  .word-box {
+    background: #090d14; border: 1px solid #243044; border-radius: 6px; padding: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .word-box.highlight { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+  .word-title { font-size: 0.7rem; color: var(--muted); }
+  .word-hex { font-size: 0.95rem; font-weight: 700; color: #60a5fa; margin: 2px 0; }
+  .word-bin { font-size: 0.68rem; color: #94a3b8; word-break: break-all; }
+  .word-desc { font-size: 0.72rem; color: #cbd5e1; margin-top: 3px; }
+
+  canvas { width: 100%; height: 110px; background: #070a10; border: 1px solid #1e293b; border-radius: 6px; display: block; }
+
+  .area-list { max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+  .area-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #0f131c; border: 1px solid #1e2636; border-radius: 6px; padding: 8px 12px; font-size: 0.84rem;
+  }
+  .area-row.upgrade { border-left: 3px solid var(--major); }
+  .area-tag { font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+
+  textarea.json-box {
+    width: 100%; height: 115px; background: #090d14; color: #a5f3fc;
+    border: 1px solid #243044; border-radius: 6px; padding: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; resize: vertical;
+  }
+  .status-log {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem;
+    background: #070a10; border: 1px solid #1e293b; border-radius: 6px; padding: 8px 10px;
+    color: #34d399; min-height: 38px;
+  }
+  .tip-box {
+    background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: 6px; padding: 8px 12px; font-size: 0.78rem; color: #bfdbfe;
+  }
+  button:disabled { opacity: .42; cursor: not-allowed; }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+  .card, .meta-item, .control-field { min-width: 0; }
+  .meta-val { overflow-wrap: anywhere; }
+  select { max-width: 100%; }
+  .source-note { font-size: .76rem; color: var(--muted); padding: 0 4px 12px; overflow-wrap: anywhere; }
+  .source-note a { color: #93c5fd; }
+  @media (max-width: 480px) { body { padding: 8px; } .card { padding: 12px; } header { padding: 12px; } .controls-row { align-items: stretch; } .control-field { max-width: 100%; } .area-row { gap: 8px; flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="title-group">
+      <h1>
+        <span>JMA 海啸电文 (VTSE41/VTSE51) → EWS 协议与音频实验台 v4</span>
+        <span class="badge-std">100 位首组 · Goertzel 源码核对</span>
+      </h1>
+      <div style="font-size:0.78rem; color:var(--muted); margin-top:3px;">
+        离线单文件 · 64 baud · 640 Hz = 0 / 1024 Hz = 1 · 播放与 WAV 共用 44.1 kHz PCM
+      </div>
+    </div>
+    <div class="preset-bar">
+      <button id="btn-preset-1" class="active" onclick="loadPreset(0)">样例 1：VTSE41 / 16:12 津波警報</button>
+      <button id="btn-preset-2" onclick="loadPreset(1)">样例 2：VTSE51 / 16:29 大津波警報</button>
+      <label class="btn-upload">
+        📂 导入 JSON 文件
+        <input type="file" id="file-input" accept=".json,application/json" style="display:none" onchange="handleFileUpload(event)">
+      </label>
+    </div>
+  </header>
+
+  <!-- 警报状态横幅 -->
+  <div id="alert-banner" class="banner level-51">
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+      <span id="banner-badge" class="banner-grade grade-51">津波警報 (Code: 51)</span>
+      <div>
+        <div id="banner-headline" style="font-weight:700; font-size:0.98rem;">津波警報を発表しました。ただちに避難してください。</div>
+        <div id="banner-sub" style="font-size:0.8rem; color:var(--muted);">EventID: 20240101161010 | 発表: 2024-01-01T16:12:00+09:00 | ステータス: 通常</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button id="btn-play-ews" data-audio class="btn-fire" onclick="playCurrentEWS()">🔊 播放 EWS 启动信号</button>
+      <button id="btn-play-end" data-audio class="btn-end" onclick="playEndEWS()">播放结束信号（完整年月日时）</button>
+      <button id="btn-stop-audio" class="btn-stop" onclick="stopAudio()">静音中断</button>
+      <button id="btn-export-wav" data-audio onclick="downloadWav()">导出当前信号 WAV</button>
+    </div>
+  </div>
+
+  <div class="grid-main">
+    <!-- 左侧：EWS 物理层参数与帧结构 -->
+    <div class="card">
+      <div class="card-header">
+        <span>📡 EWS 信号编码与声学抗干扰调节</span>
+        <span id="ews-eligibility" style="font-size:0.78rem; color:#f87171;">正在解析电文</span>
+      </div>
+
+      <div class="tip-box">
+        <strong>已修正协议；解码器不会搜索同步头。</strong><br>
+        开始信号由 4 位 <code>1100</code> 前置符号及六个 16 位符号组成，首组共 100 位。没有 <code>0xAAAA</code> 交替前导，也不重复 8 位字节。<br>
+        EWSParserApp 以 48 kHz / 750 样本做 Goertzel 检测；遇到未知块或累计 100 位就尝试解析。其 <code>try again</code> 不代表开始码已通过验证。<br>
+        海啸警报按《無線局運用規則》第138条の2选第二种；训练／试验状态不会成为音频里的独立“测试标记”。仅供隔离环境接收实验。<br>
+        App 没有位时钟恢复。若仍提示 try again，请先静音，待其清空位数后重发；连续重复主体不会让它重新同步。
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">触发判定 (Start Code)</div>
+          <div id="meta-start-type" class="meta-val" style="color:#f87171;">第二种开始 · 0xF192</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">地域符号 (Statutory Area)</div>
+          <div id="meta-regions" class="meta-val">地域共通 · 12 位 0x34D</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">实际编码时间（JST，含边界保护）</div>
+          <div id="meta-jst" class="meta-val">01月01日 16時</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">信号长度 / 位时隙（不含首尾静音）</div>
+          <div id="meta-duration" class="meta-val">加载中</div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <div class="control-field">
+          <label for="opt-signal-type">开始信号类型（按空中位序输出）</label>
+          <select id="opt-signal-type" onchange="rebuildFrame()">
+            <option value="auto" selected>自动：海啸警报 → 第二种（0xF192）</option>
+            <option value="II">第二种开始（0xF192）</option>
+            <option value="I">第一种开始（0x0E6D，仅协议实验）</option>
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="opt-area-mode">EWS 地域（与 JMA 预报区代码不同）</label>
+          <select id="opt-area-mode" onchange="rebuildFrame()">
+            <option value="all" selected>地域共通 0x34D</option>
+            <option value="kanto">関東広域圏 0x5A5</option>
+            <option value="chukyo">中京広域圏 0x72A</option>
+            <option value="kinki">近畿広域圏 0x8D5</option>
+            <option value="tottori_shimane">鳥取・島根圏 0x699</option>
+            <option value="okayama_kagawa">岡山・香川圏 0x553</option>
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="opt-640-boost">640 Hz 幅度补偿（可选，不改变频率）</label>
+          <select id="opt-640-boost" onchange="stopAudio(); generatedAudio = null;">
+            <option value="1.0" selected>0 dB · 平衡基准</option>
+            <option value="1.45">+3.2 dB · ×1.45</option>
+            <option value="1.75">+4.9 dB · ×1.75</option>
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="opt-time-mode">时间戳来源</label>
+          <select id="opt-time-mode" onchange="rebuildFrame()">
+            <option value="bulletin">电文 ReportDateTime（历史重现）</option>
+            <option value="now" selected>发送时的当前 JST 时间（接收实验）</option>
+          </select>
+        </div>
+        <div class="control-field">
+          <label for="opt-repeats">开始主体重复（默认 10）</label>
+          <input type="number" id="opt-repeats" value="10" min="1" max="20" style="width:68px;" onchange="rebuildFrame()">
+        </div>
+        <div class="control-field">
+          <label for="opt-end-repeats">结束重复（默认 4）</label>
+          <input type="number" id="opt-end-repeats" value="4" min="1" max="20" style="width:68px;" onchange="rebuildFrame()">
+        </div>
+        <div class="control-field">
+          <label for="opt-lead-silence">前导静音（秒，非同步音）</label>
+          <input type="number" id="opt-lead-silence" value="1" min="0" max="5" step="0.1" style="width:68px;" onchange="stopAudio(); generatedAudio = null;">
+        </div>
+        <div class="control-field">
+          <label for="opt-output-kind">当前显示／导出</label>
+          <select id="opt-output-kind" onchange="rebuildFrame()"><option value="start">开始信号</option><option value="F">结束信号</option></select>
+        </div>
+        <div class="control-field">
+          <label for="opt-gain">输出增益（峰值自动限制在 0.88）</label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="range" id="opt-gain" min="0.1" max="0.6" step="0.05" value="0.35" oninput="document.getElementById('gain-val').textContent=this.value; stopAudio(); generatedAudio = null;">
+            <span id="gain-val" style="font-family:monospace;">0.35</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="frame-layout" style="font-size:0.78rem; color:var(--muted);"></div>
+      <div id="frame-words-container" class="frame-words"></div>
+
+      <div class="card-header" style="margin-top:4px;">
+        <span>📈 实时音频示波器 & FFT 频谱监测 (640Hz Space / 1024Hz Mark)</span>
+        <span id="audio-clock" style="font-family:monospace; font-size:0.78rem; color:var(--muted);">IDLE</span>
+      </div>
+      <canvas id="scope-canvas" width="760" height="110" role="img" aria-label="实时波形与640和1024赫兹频谱"></canvas>
+      <div id="status-log" class="status-log" role="status" aria-live="polite">正在初始化协议实验台……</div>
+    </div>
+
+    <!-- 右侧：海啸预报区等级解析 & 观测数据 -->
+    <div class="card">
+      <div class="card-header">
+        <span>🌊 沿岸海啸预报区解析 (最高等级与升级状态)</span>
+        <span id="area-summary" style="font-size:0.78rem; color:var(--muted);">共 26 个预报区</span>
+      </div>
+      <div id="area-list" class="area-list"></div>
+
+      <div id="obs-section" style="display:none;">
+        <div class="card-header" style="margin-top:6px;">
+          <span>📊 潮位观测点实测数据 (Observation)</span>
+        </div>
+        <div id="obs-list" class="area-list" style="max-height:110px; margin-top:6px;"></div>
+      </div>
+
+      <div class="card-header" style="margin-top:4px;">
+        <span>📝 原始 JSON 输入 / 粘贴任意 VTSE41・VTSE51 电文</span>
+        <button style="padding:3px 9px; font-size:0.75rem;" onclick="parseFromTextarea()">解析文本 JSON</button>
+      </div>
+      <textarea id="json-textarea" class="json-box" aria-label="JMA 海啸电文 JSON" spellcheck="false"></textarea>
+    </div>
+  </div>
+  <div class="source-note">
+    样例为历史情境节选，未作为 JMA 原始电文档案核验；地域选择是 EWS 接收范围，不会自动把三位 JMA 沿岸区码当作 EWS 地域码。<br>
+    核对来源：<a href="https://github.com/private-yusuke/EWSParserApp/blob/main/app/src/main/java/xyz/ckkpd/ewsparserapp/EWSConstants.kt" target="_blank" rel="noopener noreferrer">EWSParserApp 常量</a> ·
+    <a href="https://github.com/private-yusuke/EWSParserApp/blob/main/app/src/main/java/xyz/ckkpd/ewsparserapp/MainActivity.kt" target="_blank" rel="noopener noreferrer">App 解调与解析触发</a> ·
+    <a href="https://github.com/azzbm/JP-EAS-Generator" target="_blank" rel="noopener noreferrer">参考生成器</a> ·
+    <a href="https://github.com/ingen084/EwsDemodulator" target="_blank" rel="noopener noreferrer">C# 解码器</a> ·
+    <a href="https://github.com/radiolab81/EWBS_JP" target="_blank" rel="noopener noreferrer">Python 解码器</a> ·
+    <a href="https://github.com/Yanai-Taketo/Emergency-Warning-System" target="_blank" rel="noopener noreferrer">字段交叉核对</a> ·
+    <a href="https://www.tele.soumu.go.jp/horei/law_honbun/72103000.html" target="_blank" rel="noopener noreferrer">告示第405号（帧与奇偶时间规则）</a> ·
+    <a href="https://laws.e-gov.go.jp/law/325M50080000018" target="_blank" rel="noopener noreferrer">無線設備規則 第9条の3</a> ·
+    <a href="https://laws.e-gov.go.jp/law/325M50080000017" target="_blank" rel="noopener noreferrer">無線局運用規則 第138条の2</a><br>
+    验证范围：源码位流与两套开源解码器的数字 PCM 交叉测试；尚未完成实体 EWS 接收设备起动测试。默认使用发送当前时间；历史重现可能被校时接收器拒绝。低于默认重复次数或 1 秒前导静音的设置仅用于实验。
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// 1. 内嵌历史情境 JSON 节选（沿用原测试页数据，未核验为完整原始档案）
+// ============================================================================
+const PRESET_JSONS = [
+  {
+    "Control": { "Title": "津波警報・注意報・予報a", "DateTime": "2024-01-01T07:12:54Z", "Status": "通常", "EditorialOffice": "気象庁本庁", "PublishingOffice": "気象庁" },
+    "Head": {
+      "Title": "津波警報・津波注意報・津波予報", "ReportDateTime": "2024-01-01T16:12:00+09:00", "TargetDateTime": "2024-01-01T16:12:00+09:00",
+      "EventID": "20240101161010", "InfoType": "発表", "Serial": null, "InfoKind": "津波警報・注意報・予報",
+      "Headline": { "Text": "津波警報を発表しました。\nただちに避難してください。" }
+    },
+    "Body": {
+      "Tsunami": {
+        "Forecast": {
+          "Item": [
+            { "Area": { "Name": "新潟県上中下越", "Code": "340" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "Condition": "津波到達中と推測" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "佐渡", "Code": "341" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "Condition": "津波到達中と推測" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "富山県", "Code": "350" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "Condition": "津波到達中と推測" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "石川県能登", "Code": "360" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "Condition": "津波到達中と推測" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "石川県加賀", "Code": "361" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:00:00+09:00" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "北海道日本海沿岸南部", "Code": "111" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:00:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "青森県日本海沿岸", "Code": "200" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "秋田県", "Code": "230" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "山形県", "Code": "240" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:40:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "福井県", "Code": "370" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "京都府", "Code": "500" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "兵庫県北部", "Code": "520" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "鳥取県", "Code": "540" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:20:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "島根県出雲・石見", "Code": "550" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "隠岐", "Code": "551" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "山口県日本海沿岸", "Code": "700" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波なし", "Code": "00" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T18:30:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "北海道太平洋沿岸中部", "Code": "101" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "北海道太平洋沿岸西部", "Code": "102" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "北海道日本海沿岸北部", "Code": "110" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "オホーツク海沿岸", "Code": "120" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "青森県太平洋沿岸", "Code": "201" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "陸奥湾", "Code": "202" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "福岡県日本海沿岸", "Code": "711" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "佐賀県北部", "Code": "720" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "長崎県西方", "Code": "730" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } },
+            { "Area": { "Name": "壱岐・対馬", "Code": "731" }, "Category": { "Kind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "MaxHeight": { "TsunamiHeight": "<0.2" } }
+          ]
+        }
+      },
+      "Earthquake": [{ "OriginTime": "2024-01-01T16:10:00+09:00", "Hypocenter": { "Area": { "Name": "石川県能登地方", "NameFromMark": "輪島の東北東３０ｋｍ付近" } }, "Magnitude": "7.4" }]
+    }
+  },
+  {
+    "Control": { "Title": "津波情報a", "DateTime": "2024-01-01T07:29:01Z", "Status": "通常", "EditorialOffice": "気象庁本庁", "PublishingOffice": "気象庁" },
+    "Head": {
+      "Title": "津波観測に関する情報", "ReportDateTime": "2024-01-01T16:29:00+09:00", "TargetDateTime": "2024-01-01T16:27:00+09:00",
+      "EventID": "20240101161010", "InfoType": "発表", "Serial": "3", "InfoKind": "津波情報",
+      "Headline": { "Text": "１日１６時２７分現在の、津波の観測値をお知らせします。（石川県能登に大津波警報：発表）" }
+    },
+    "Body": {
+      "Tsunami": {
+        "Observation": {
+          "Item": [
+            { "Area": { "Name": "富山県", "Code": "350" }, "Station": [{ "Name": "富山", "FirstHeight": { "ArrivalTime": "2024-01-01T16:13:00+09:00", "Initial": "引き" }, "MaxHeight": { "DateTime": "2024-01-01T16:23:00+09:00", "TsunamiHeight": "0.5" } }] },
+            { "Area": { "Name": "石川県能登", "Code": "360" }, "Station": [{ "Name": "輪島港", "FirstHeight": { "ArrivalTime": "2024-01-01T16:10:00+09:00", "Initial": "押し" }, "MaxHeight": { "DateTime": "2024-01-01T16:21:00+09:00", "TsunamiHeight": "1.2" } }] }
+          ]
+        },
+        "Forecast": {
+          "Item": [
+            { "Area": { "Name": "石川県能登", "Code": "360" }, "Category": { "Kind": { "Name": "大津波警報：発表", "Code": "53" }, "LastKind": { "Name": "津波警報", "Code": "51" } }, "FirstHeight": { "Condition": "第１波の到達を確認", "Revise": "更新" }, "MaxHeight": { "TsunamiHeight": "5" } },
+            { "Area": { "Name": "山形県", "Code": "240" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:40:00+09:00" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "新潟県上中下越", "Code": "340" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波警報", "Code": "51" } }, "FirstHeight": { "Condition": "津波到達中と推測" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "佐渡", "Code": "341" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波警報", "Code": "51" } }, "FirstHeight": { "Condition": "津波到達中と推測" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "富山県", "Code": "350" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波警報", "Code": "51" } }, "FirstHeight": { "Condition": "第１波の到達を確認" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "石川県加賀", "Code": "361" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波警報", "Code": "51" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "福井県", "Code": "370" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:00:00+09:00" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "兵庫県北部", "Code": "520" }, "Category": { "Kind": { "Name": "津波警報", "Code": "51" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:00:00+09:00" }, "MaxHeight": { "TsunamiHeight": "3" } },
+            { "Area": { "Name": "北海道太平洋沿岸西部", "Code": "102" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "北海道日本海沿岸北部", "Code": "110" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:30:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "北海道日本海沿岸南部", "Code": "111" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "青森県日本海沿岸", "Code": "200" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "秋田県", "Code": "230" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T16:50:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "京都府", "Code": "500" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:00:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "鳥取県", "Code": "540" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "島根県出雲・石見", "Code": "550" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:40:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "隠岐", "Code": "551" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T17:00:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "山口県日本海沿岸", "Code": "700" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波注意報", "Code": "62" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T18:20:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "福岡県日本海沿岸", "Code": "711" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T19:10:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "佐賀県北部", "Code": "720" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T19:40:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } },
+            { "Area": { "Name": "壱岐・対馬", "Code": "731" }, "Category": { "Kind": { "Name": "津波注意報", "Code": "62" }, "LastKind": { "Name": "津波予報（若干の海面変動）", "Code": "71" } }, "FirstHeight": { "ArrivalTime": "2024-01-01T18:30:00+09:00" }, "MaxHeight": { "TsunamiHeight": "1" } }
+          ]
+        }
+      },
+      "Earthquake": [{ "OriginTime": "2024-01-01T16:10:00+09:00", "Hypocenter": { "Area": { "Name": "石川県能登地方", "NameFromMark": "輪島の東北東３０ｋｍ付近" } }, "Magnitude": "7.6" }]
+    }
+  }
+];
+
+// ============================================================================
+// 2. EWSParserApp 已核对的位流；下列字符串均按从左到右的空中发送顺序书写。
+// 源码：private-yusuke/EWSParserApp，EWSConstants.kt / EWSParser.kt / MainActivity.kt
+// 交叉核对：azzbm/JP-EAS-Generator，make_signal.js / make_chunk.js / code.js
+// 物理层：無線設備規則 第9条の3。海啸类型：無線局運用規則 第138条の2。
+// 不采用旧版 0xAA/0x33/0xCC/0x5A 或 4-of-8 重复字节假设。
+// ============================================================================
+const SAMPLE_RATE = 44100;
+const BAUD = 64;
+const EWS_CTRL = Object.freeze({ PREFIX: '1100', END_PREFIX: '0011', FIXED_I: '0000111001101101', FIXED_II: '1111000110010010' });
+const EWS_AREAS = Object.freeze({
+  all: { code: '001101001101', label: '地域共通符号' },
+  kanto: { code: '010110100101', label: '関東広域圏' },
+  chukyo: { code: '011100101010', label: '中京広域圏' },
+  kinki: { code: '100011010101', label: '近畿広域圏' },
+  tottori_shimane: { code: '011010011001', label: '鳥取・島根圏' },
+  okayama_kagawa: { code: '010101010011', label: '岡山・香川圏' }
+});
+const STATUTORY_MONTH_CODES = ['', '10001', '01001', '11001', '00101', '10101', '01101', '11101', '00011', '10011', '01011', '11011', '00111'];
+const STATUTORY_DAY_CODES = ['', '10000', '01000', '11000', '00100', '10100', '01100', '11100', '00010', '10010', '01010', '11010', '00110', '10110', '01110', '11110', '00001', '10001', '01001', '11001', '00101', '10101', '01101', '11101', '00011', '10011', '01011', '11011', '00111', '10111', '01111', '11111'];
+const STATUTORY_HOUR_CODES = ['00011', '10011', '01011', '11011', '00111', '10111', '01111', '11111', '00001', '10001', '01001', '11001', '00101', '10101', '01101', '11101', '00010', '10010', '01010', '11010', '00110', '10110', '01110', '11110'];
+// 下标为昭和年数末位；App 通过 (昭和末位 + 5) % 10 转成西历末位。
+const STATUTORY_YEAR_CODES = ['10101', '01101', '11101', '00011', '10011', '01011', '10001', '01001', '11001', '00101'];
+
+function numberInRange(value, min, max, name, integer = false) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n))) {
+    throw new RangeError(`${name}须为 ${min}～${max}${integer ? ' 的整数' : ''}`);
+  }
+  return n;
+}
+
+function getSignalDateParts(value, blockIndex = 1) {
+  if (typeof value === 'string' && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) {
+    throw new Error('ReportDateTime 必须是带 Z 或时区偏移的 ISO 8601 时间');
+  }
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) throw new Error('电文时间无效');
+  if (typeof value === 'string') {
+    const [year, month, day, hour, minute, second] = value.match(/^\d{4}|\d{2}/g).slice(0, 6).map(Number);
+    const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    if (month < 1 || month > 12 || day < 1 || day > maxDay || hour > 23 || minute > 59 || second > 59) throw new Error('电文时间包含不存在的日期或时刻');
+  }
+  const jstMs = date.getTime() + 9 * 60 * 60 * 1000;
+  const original = new Date(jstMs);
+  const minute = original.getUTCMinutes();
+  // 告示第405号注1/注2：奇数块始终为发送时刻，仅偶数块在边界使用相邻时刻。
+  const shiftHours = blockIndex % 2 === 0 ? (minute < 10 ? -1 : minute >= 50 ? 1 : 0) : 0;
+  const encoded = new Date(jstMs + shiftHours * 60 * 60 * 1000);
+  const monthDayFlag = encoded.getUTCFullYear() !== original.getUTCFullYear() || encoded.getUTCMonth() !== original.getUTCMonth() || encoded.getUTCDate() !== original.getUTCDate() ? '1' : '0';
+  return {
+    year: encoded.getUTCFullYear(), month: encoded.getUTCMonth() + 1,
+    day: encoded.getUTCDate(), hour: encoded.getUTCHours(),
+    monthDayFlag, yearHourFlag: shiftHours ? '1' : '0',
+    originalJST: original.toISOString().replace('Z', '+09:00'),
+    encodedJST: encoded.toISOString().replace('Z', '+09:00')
+  };
+}
+
+function makeWord(label, bits, desc, hl = false) {
+  if (!/^[01]{16}$/.test(bits)) throw new Error(`${label} 不是 16 位符号`);
+  return { label, bits, desc, hl, hex: '0x' + parseInt(bits, 2).toString(16).toUpperCase().padStart(4, '0'), bin: bits.match(/.{4}/g).join(' ') };
+}
+
+function buildTransmission({ type = 'II', areaKey = 'all', date, repeats = type === 'F' ? 4 : 10 } = {}) {
+  if (!['I', 'II', 'F'].includes(type)) throw new Error('信号类型须为 I / II / F');
+  const area = EWS_AREAS[areaKey];
+  if (!area) throw new Error('请选择 EWSParserApp 已定义的地域');
+  repeats = numberInRange(repeats, 1, 20, '重复次数', true);
+  const end = type === 'F';
+  const fixed = type === 'II' ? EWS_CTRL.FIXED_II : EWS_CTRL.FIXED_I;
+  const prefix = end ? EWS_CTRL.END_PREFIX : EWS_CTRL.PREFIX;
+  const suffix = end ? '11' : '00';
+  const blocks = Array.from({ length: repeats }, (_, index) => {
+    const dateParts = getSignalDateParts(date, index + 1);
+    const { year, month, day, hour, monthDayFlag, yearHourFlag } = dateParts;
+    const words = [
+      makeWord('Word 1：固定符号', fixed, type === 'II' ? '第二种开始' : end ? '结束（固定码与第一种相同）' : '第一种开始', true),
+      makeWord('Word 2：地域区分', (end ? '01' : '10') + area.code + suffix, `${area.label}，12 位地域码 0x${parseInt(area.code, 2).toString(16).toUpperCase()}`),
+      makeWord('Word 3：固定符号', fixed, '每个区分符号之前均有固定码'),
+      makeWord('Word 4：月日区分', (end ? '100' : '010') + STATUTORY_DAY_CODES[day] + monthDayFlag + STATUTORY_MONTH_CODES[month] + suffix, `${month}月${day}日；保护位 ${monthDayFlag}`),
+      makeWord('Word 5：固定符号', fixed, '年时区分之前的固定码'),
+      makeWord('Word 6：年时区分', (end ? '101' : '011') + STATUTORY_HOUR_CODES[hour] + yearHourFlag + STATUTORY_YEAR_CODES[((year - 1925) % 10 + 10) % 10] + suffix, `${year}年 ${hour}时；保护位 ${yearHourFlag}`)
+    ];
+    return { index: index + 1, dateParts, words, bits: words.map(word => word.bits).join('') };
+  });
+  // 开始：一次 4 位前置符号 + 96 位主体连续重复；结束：每次 100 位 + 92 位时长的无音。
+  const bits = end ? blocks.map(block => prefix + block.bits + '.'.repeat(92)).join('') : prefix + blocks.map(block => block.bits).join('');
+  return { type, bits, words: blocks[0].words, prefix, dateParts: blocks[0].dateParts, blocks, areaKey, repeats };
+}
+
+// ============================================================================
+// 3. JSON 解析和当前帧。电文内容仅作为数据，不插入可执行 HTML。
+// ============================================================================
+let currentData = null;
+let parsedBulletin = null;
+let currentFrameWords = [];
+let currentBitStream = '';
+let currentTransmission = null;
+let generatedAudio = null;
+let audioCtx = null;
+let activeSource = null;
+let activeAnalyser = null;
+let animFrameId = null;
+let audioGeneration = 0;
+
+function gradePriority(code) {
+  code = String(code);
+  if (code === '52' || code === '53') return 4;
+  if (code === '50' || code === '51') return 3;
+  if (code === '60' || code === '62') return 2;
+  if (['71', '72', '73'].includes(code)) return 1;
+  return 0;
+}
+function asArray(value) { return value == null ? [] : Array.isArray(value) ? value : [value]; }
+function textValue(value) {
+  if (value == null) return '-';
+  if (typeof value !== 'object') return String(value);
+  return String(value.value ?? value._text ?? value['#text'] ?? value.$t ?? value.description ?? value.Condition ?? '-');
+}
+function escapeHTML(value) {
+  return textValue(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+function setStatus(text, isError = false) {
+  const node = document.getElementById('status-log');
+  node.textContent = text;
+  node.style.color = isError ? '#fca5a5' : '#34d399';
+}
+function setAudioAvailable(available) {
+  document.querySelectorAll('[data-audio]').forEach(node => { node.disabled = !available; });
+}
+function invalidateInput(error) {
+  stopAudio();
+  currentData = null; parsedBulletin = null; currentTransmission = null;
+  currentBitStream = ''; currentFrameWords = []; generatedAudio = null;
+  document.getElementById('frame-words-container').innerHTML = '';
+  document.getElementById('meta-duration').textContent = '无有效信号';
+  document.getElementById('ews-eligibility').textContent = '输入无效，已禁用信号输出';
+  document.getElementById('banner-badge').textContent = '输入无效';
+  document.getElementById('banner-headline').textContent = error.message;
+  document.getElementById('banner-sub').textContent = '';
+  document.getElementById('area-list').innerHTML = '';
+  document.getElementById('obs-section').style.display = 'none';
+  document.getElementById('alert-banner').className = 'banner level-none';
+  setAudioAvailable(false);
+  setStatus('解析失败：' + error.message, true);
+}
+function loadPreset(index) {
+  document.getElementById('btn-preset-1').classList.toggle('active', index === 0);
+  document.getElementById('btn-preset-2').classList.toggle('active', index === 1);
+  const data = PRESET_JSONS[index];
+  document.getElementById('json-textarea').value = JSON.stringify(data, null, 2);
+  try { parseBulletin(data); } catch (error) { invalidateInput(error); }
+}
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    if (file.size > 2 * 1024 * 1024) throw new Error('JSON 文件上限为 2 MB');
+    const raw = (await file.text()).replace(/^\uFEFF/, '');
+    document.getElementById('json-textarea').value = raw;
+    parseFromTextarea();
+  } catch (error) { invalidateInput(error); }
+  event.target.value = '';
+}
+function parseFromTextarea() {
+  try {
+    const raw = document.getElementById('json-textarea').value.replace(/^\uFEFF/, '');
+    if (raw.length > 2 * 1024 * 1024) throw new Error('JSON 输入上限为 2 MB');
+    parseBulletin(JSON.parse(raw));
+    document.getElementById('btn-preset-1').classList.remove('active');
+    document.getElementById('btn-preset-2').classList.remove('active');
+  } catch (error) { invalidateInput(error); }
+}
+function parseBulletin(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('电文根节点必须是对象');
+  if (!data.Head?.ReportDateTime) throw new Error('缺少 Head.ReportDateTime');
+  getSignalDateParts(data.Head.ReportDateTime);
+  const status = data.Control?.Status;
+  if (!['通常', '訓練', '試験'].includes(status)) throw new Error('Control.Status 须为 通常 / 訓練 / 試験');
+  const tsunami = data.Body?.Tsunami;
+  if (!tsunami?.Forecast || tsunami.Forecast.Item == null) throw new Error('缺少 Body.Tsunami.Forecast.Item');
+  const forecastItems = asArray(tsunami.Forecast.Item);
+  if (forecastItems.length > 1000) throw new Error('预报区数量超过 1000');
+  for (const item of forecastItems) {
+    if (!item?.Area || item.Category?.Kind?.Code == null) throw new Error('预报区缺少 Area 或 Category.Kind.Code');
+  }
+  const observationItems = asArray(tsunami.Observation?.Item);
+  const maxPrio = Math.max(0, ...forecastItems.map(item => gradePriority(item.Category.Kind.Code)));
+  const highest = forecastItems.find(item => gradePriority(item.Category.Kind.Code) === maxPrio)?.Category.Kind;
+  const ewsTriggeredAreas = forecastItems.filter(item => gradePriority(item.Category.Kind.Code) >= 3);
+  const kindNames = { 4: '大津波警報', 3: '津波警報', 2: '津波注意報', 1: '津波予報', 0: '警報なし' };
+  stopAudio();
+  currentData = data;
+  parsedBulletin = { maxPrio, isDrill: status !== '通常', ewsTriggeredAreas };
+  generatedAudio = null;
+  document.getElementById('opt-output-kind').value = 'start';
+  const banner = document.getElementById('alert-banner');
+  const badge = document.getElementById('banner-badge');
+  banner.className = 'banner ' + ({ 4: 'level-53', 3: 'level-51', 2: 'level-62' }[maxPrio] || 'level-none');
+  badge.className = 'banner-grade ' + ({ 4: 'grade-53', 3: 'grade-51', 2: 'grade-62' }[maxPrio] || 'grade-71');
+  badge.textContent = `${highest?.Name || kindNames[maxPrio]} (Code: ${highest?.Code || '00'})${status !== '通常' ? ' · ' + status : ''}`;
+  document.getElementById('banner-headline').textContent = textValue(data.Head.Headline?.Text ?? data.Head.Title ?? '海啸电文');
+  document.getElementById('banner-sub').textContent = `EventID: ${data.Head.EventID || '-'} | 发布时间: ${data.Head.ReportDateTime} | 状态: ${status}`;
+  const sorted = [...forecastItems].sort((a, b) => gradePriority(b.Category.Kind.Code) - gradePriority(a.Category.Kind.Code));
+  document.getElementById('area-summary').textContent = `共 ${sorted.length} 个预报区（警报及以上：${ewsTriggeredAreas.length}）`;
+  document.getElementById('area-list').innerHTML = sorted.map(item => {
+    const kind = item.Category.Kind;
+    const previous = item.Category.LastKind;
+    const priority = gradePriority(kind.Code);
+    const upgrade = previous && String(previous.Code) !== '00' && priority > gradePriority(previous.Code);
+    const tag = { 4: 'grade-53', 3: 'grade-51', 2: 'grade-62' }[priority] || 'grade-71';
+    const arrival = item.FirstHeight?.Condition ?? item.FirstHeight?.ArrivalTime ?? '-';
+    return `<div class="area-row ${upgrade ? 'upgrade' : ''}"><div><strong>${escapeHTML(item.Area.Name)}</strong> <span class="meta-label">[${escapeHTML(item.Area.Code)}]</span>${upgrade ? '<span class="meta-label"> ↑ 升级</span>' : ''}<div class="meta-label">${escapeHTML(arrival)}</div></div><div><strong>${escapeHTML(item.MaxHeight?.TsunamiHeight)} m</strong> <span class="area-tag ${tag}">${escapeHTML(kind.Name || kindNames[priority])}</span></div></div>`;
+  }).join('');
+  const stations = observationItems.flatMap(item => asArray(item.Station).map(station => ({ area: item.Area, station })));
+  document.getElementById('obs-section').style.display = stations.length ? 'block' : 'none';
+  document.getElementById('obs-list').innerHTML = stations.map(({ area, station }) => `<div class="area-row"><div><strong>${escapeHTML(station.Name)}</strong> <span class="meta-label">(${escapeHTML(area?.Name)})</span><div class="meta-label">首波：${escapeHTML(station.FirstHeight?.ArrivalTime)} ${escapeHTML(station.FirstHeight?.Initial)}</div></div><div><strong>${escapeHTML(station.MaxHeight?.TsunamiHeight)} m</strong><div class="meta-label">${escapeHTML(station.MaxHeight?.DateTime ?? station.MaxHeight?.Condition)}</div></div></div>`).join('');
+  rebuildFrame();
+}
+
+function rebuildFrame() {
+  if (!currentData || !parsedBulletin) return;
+  stopAudio();
+  try {
+    const signalChoice = document.getElementById('opt-signal-type').value;
+    const type = document.getElementById('opt-output-kind').value === 'F' ? 'F' : signalChoice === 'auto' ? 'II' : signalChoice;
+    const date = document.getElementById('opt-time-mode').value === 'now' ? new Date() : currentData.Head.ReportDateTime;
+    const repeats = document.getElementById(type === 'F' ? 'opt-end-repeats' : 'opt-repeats').value;
+    const transmission = buildTransmission({ type, areaKey: document.getElementById('opt-area-mode').value, date, repeats });
+    currentTransmission = transmission;
+    currentFrameWords = transmission.words;
+    currentBitStream = transmission.bits;
+    generatedAudio = null;
+    const parts = transmission.dateParts;
+    document.getElementById('meta-jst').textContent = `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')} ${String(parts.hour).padStart(2, '0')}时 JST`;
+    document.getElementById('meta-regions').textContent = `${EWS_AREAS[transmission.areaKey].label} (12 位 0x${parseInt(EWS_AREAS[transmission.areaKey].code, 2).toString(16).toUpperCase()})`;
+    document.getElementById('meta-start-type').textContent = `${type === 'F' ? '结束信号' : type === 'I' ? '第一种开始' : '第二种开始'} · ${transmission.words[0].hex}`;
+    const seconds = currentBitStream.length / BAUD;
+    document.getElementById('meta-duration').textContent = `${seconds.toFixed(4)} 秒 / ${currentBitStream.length} 位时隙`;
+    document.getElementById('frame-layout').textContent = `前置 ${transmission.prefix}（4 位）+ 下列六个 16 位符号；${type === 'F' ? '每次后接 92 位时长静音，共重复 ' + transmission.repeats + ' 次' : '96 位主体连续重复 ' + transmission.repeats + ' 次，前置符号只发送一次'}。`;
+    document.getElementById('frame-layout').textContent += ' 下列显示奇数块（发送时刻）；偶数块在整点前后 10 分钟使用相邻时刻，其余相同。';
+    document.getElementById('frame-words-container').innerHTML = transmission.words.map((word, index) => {
+      const alternate = transmission.blocks[1]?.words[index];
+      const detail = alternate && alternate.bits !== word.bits ? `${word.desc}<br>偶数块：${alternate.hex}，${alternate.desc}` : word.desc;
+      return `<div class="word-box ${word.hl ? 'highlight' : ''}"><div class="word-title">${word.label}</div><div class="word-hex">${word.hex}</div><div class="word-bin">${word.bin}</div><div class="word-desc">${detail}</div></div>`;
+    }).join('');
+    const eligible = parsedBulletin.maxPrio >= 3;
+    const eligibility = document.getElementById('ews-eligibility');
+    eligibility.textContent = eligible ? `${parsedBulletin.isDrill ? '训练／试验电文 · ' : ''}${parsedBulletin.ewsTriggeredAreas.length} 个警报区 · ${type === 'I' ? '已手选第一种协议实验' : type === 'F' ? '结束信号实验' : '海啸使用第二种开始'}` : '仅注意报／预报／解除：禁止自动生成开始信号';
+    eligibility.style.color = eligible ? '#fca5a5' : '#94a3b8';
+    const available = eligible || type === 'F';
+    setAudioAvailable(available);
+    // 结束信号实验按钮对所有有效电文保留，以便测试接收机复位。
+    document.getElementById('btn-play-end').disabled = false;
+    setStatus(available ? `位流已生成：${type} · ${transmission.prefix} + 六符号；首组 100 位 / 1.5625 秒。播放与导出共用 PCM。` : '当前电文未达到警报阈值，开始信号已禁用；可单独测试结束信号。');
+  } catch (error) {
+    currentTransmission = null; currentBitStream = ''; generatedAudio = null;
+    setAudioAvailable(false);
+    setStatus('参数错误：' + error.message, true);
+  }
+}
+
+// ============================================================================
+// 4. 同一份 44.1 kHz PCM 用于 AudioBufferSourceNode 和 16-bit WAV。
+// 44,100 / 64 = 689.0625。以绝对采样位置确定符号，不把每位截短成 689 样本。
+// 两种载波在每位内恰为 10 / 16 周期，边界处解析相位均为 2π 的整数倍。
+// ============================================================================
+function synthesizePCM(bits, { gain = 0.35, boost640 = 1, leadSilenceSec = 1 } = {}) {
+  if (typeof bits !== 'string' || !/^[01.]+$/.test(bits) || bits.length > 20000) throw new Error('位流无效或过长');
+  gain = numberInRange(gain, 0.05, 0.8, '增益');
+  boost640 = numberInRange(boost640, 0.5, 2, '640 Hz 补偿');
+  leadSilenceSec = numberInRange(leadSilenceSec, 0, 5, '前导静音');
+  const lead = Math.round(leadSilenceSec * SAMPLE_RATE);
+  const signalLength = Math.ceil(bits.length * SAMPLE_RATE / BAUD);
+  const samples = new Float32Array(lead + signalLength + Math.round(0.1 * SAMPLE_RATE));
+  const peakGain = Math.min(gain, 0.88 / Math.max(1, boost640));
+  const smoothing = 1 - Math.exp(-1 / (0.001 * SAMPLE_RATE));
+  // Keep onset within the first carrier cycle for zero-crossing receivers.
+  const attackSamples = Math.round(0.0005 * SAMPLE_RATE);
+  const fadeSamples = Math.round(0.002 * SAMPLE_RATE);
+  for (const run of bits.matchAll(/[01]+/g)) {
+    const start = Math.ceil(run.index * SAMPLE_RATE / BAUD);
+    const end = Math.ceil((run.index + run[0].length) * SAMPLE_RATE / BAUD);
+    let amplitude = peakGain * (bits[run.index] === '0' ? boost640 : 1);
+    for (let n = start; n < end; n++) {
+      const bitIndex = Math.floor(n * BAUD / SAMPLE_RATE);
+      const one = bits[bitIndex] === '1';
+      const frequency = one ? 1024 : 640;
+      const target = peakGain * (one ? 1 : boost640);
+      amplitude += (target - amplitude) * smoothing;
+      const phase = 2 * Math.PI * frequency * (n / SAMPLE_RATE - bitIndex / BAUD);
+      const edge = Math.min(1, (n - start) / attackSamples, (end - 1 - n) / fadeSamples);
+      const envelope = 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, edge));
+      samples[lead + n] = Math.sin(phase) * amplitude * envelope;
+    }
+  }
+  return samples;
+}
+
+function encodeWav(samples) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeString = (offset, value) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+  writeString(0, 'RIFF'); view.setUint32(4, buffer.byteLength - 8, true);
+  writeString(8, 'WAVE'); writeString(12, 'fmt '); view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, SAMPLE_RATE, true); view.setUint32(28, SAMPLE_RATE * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  writeString(36, 'data'); view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) view.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, samples[i])) * 32767), true);
+  return buffer;
+}
+
+function audioOptions() {
+  return {
+    gain: numberInRange(document.getElementById('opt-gain').value, 0.05, 0.8, '增益'),
+    boost640: numberInRange(document.getElementById('opt-640-boost').value, 0.5, 2, '640 Hz 补偿'),
+    leadSilenceSec: numberInRange(document.getElementById('opt-lead-silence').value, 0, 5, '前导静音')
+  };
+}
+function prepareAudio() {
+  if (!currentTransmission || !currentBitStream || !parsedBulletin) throw new Error('请先解析有效电文并检查参数');
+  if (currentTransmission.type !== 'F' && parsedBulletin.maxPrio < 3) throw new Error('注意报／预报／解除不触发 EWS 开始信号');
+  const options = audioOptions();
+  const key = JSON.stringify([currentBitStream, options]);
+  if (!generatedAudio || generatedAudio.key !== key) {
+    generatedAudio = { key, samples: synthesizePCM(currentBitStream, options), transmission: currentTransmission, options };
+  }
+  return generatedAudio;
+}
+async function ensureAudioContext() {
+  if (!audioCtx || audioCtx.state === 'closed') {
+    const AudioContextType = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextType) throw new Error('浏览器不支持 Web Audio；仍可导出 WAV');
+    audioCtx = new AudioContextType({ sampleRate: SAMPLE_RATE });
+  }
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  if (audioCtx.state !== 'running') throw new Error('音频未能启动，请在页面上点击播放并检查浏览器音频权限');
+}
+function stopAudio() {
+  audioGeneration++;
+  const source = activeSource;
+  activeSource = null;
+  if (source) {
+    source.onended = null;
+    try { source.stop(); } catch (error) { /* 已结束的节点无需再次停止。 */ }
+    source.disconnect();
+  }
+  if (activeAnalyser) { activeAnalyser.disconnect(); activeAnalyser = null; }
+  if (animFrameId != null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+  document.getElementById('audio-clock').textContent = 'STOPPED';
+  if (source) setStatus('发送已中断。可等待接收端清空位数后重新播放。');
+}
+async function playBitStream() {
+  stopAudio();
+  const token = audioGeneration;
+  try {
+    const generated = prepareAudio();
+    await ensureAudioContext();
+    if (token !== audioGeneration) return;
+    const buffer = audioCtx.createBuffer(1, generated.samples.length, SAMPLE_RATE);
+    buffer.copyToChannel(generated.samples, 0);
+    const source = audioCtx.createBufferSource();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 4096;
+    source.buffer = buffer;
+    source.connect(analyser); analyser.connect(audioCtx.destination);
+    activeSource = source; activeAnalyser = analyser;
+    const startTime = audioCtx.currentTime;
+    source.onended = () => {
+      if (activeSource !== source) return;
+      activeSource = null; source.disconnect(); analyser.disconnect(); activeAnalyser = null;
+      if (animFrameId != null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+      document.getElementById('audio-clock').textContent = 'DONE';
+      setStatus(`发送完成：${generated.transmission.type} / ${(generated.samples.length / SAMPLE_RATE).toFixed(3)} 秒。可导出同一份 PCM。`);
+    };
+    source.start();
+    setStatus(`正在发送 ${generated.transmission.type}：44.1 kHz PCM；前导静音 ${generated.options.leadSilenceSec} 秒；640 Hz ×${generated.options.boost640}。`);
+    visualizeScope(analyser, startTime, buffer.duration);
+  } catch (error) { setStatus('无法播放：' + error.message, true); }
+}
+function playCurrentEWS() {
+  document.getElementById('opt-output-kind').value = 'start';
+  rebuildFrame();
+  return playBitStream();
+}
+function playEndEWS() {
+  document.getElementById('opt-output-kind').value = 'F';
+  rebuildFrame();
+  return playBitStream();
+}
+function downloadWav() {
+  try {
+    // 首次导出以实际发送时刻编码；已播放或已导出的缓存保留，供同一份 PCM 复核。
+    if (!generatedAudio && document.getElementById('opt-time-mode').value === 'now') rebuildFrame();
+    const generated = prepareAudio();
+    const blob = new Blob([encodeWav(generated.samples)], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const eventId = String(currentData.Head.EventID || 'lab').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80);
+    anchor.href = url;
+    anchor.download = `EWS_${eventId}_${generated.transmission.type}_44100Hz.wav`;
+    document.body.appendChild(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus(`已导出 ${generated.transmission.type}：44.1 kHz / 16-bit / 单声道，${generated.samples.length} 个样本；与当前播放源一致。`);
+  } catch (error) { setStatus('无法导出：' + error.message, true); }
+}
+function visualizeScope(analyser, startTime, duration) {
+  const canvas = document.getElementById('scope-canvas');
+  const context = canvas.getContext('2d');
+  const timeData = new Uint8Array(analyser.fftSize);
+  const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+  function draw() {
+    if (!activeSource || activeAnalyser !== analyser) return;
+    animFrameId = requestAnimationFrame(draw);
+    const elapsed = Math.max(0, audioCtx.currentTime - startTime);
+    document.getElementById('audio-clock').textContent = `TX ${elapsed.toFixed(2)} / ${duration.toFixed(2)} 秒`;
+    analyser.getByteTimeDomainData(timeData); analyser.getByteFrequencyData(frequencyData);
+    context.fillStyle = '#070a10'; context.fillRect(0, 0, canvas.width, canvas.height);
+    const split = canvas.width * 0.52;
+    context.strokeStyle = '#38bdf8'; context.lineWidth = 1.4; context.beginPath();
+    // 仅显示约 10ms，能直接看出 640 / 1024 Hz 波形，而非把数十周期挤成色块。
+    const visibleSamples = Math.min(timeData.length, Math.round(audioCtx.sampleRate * 0.01));
+    for (let i = 0; i < visibleSamples; i++) {
+      const x = i / (visibleSamples - 1) * (split - 8);
+      const y = timeData[i] / 255 * (canvas.height - 8) + 4;
+      if (i === 0) context.moveTo(x, y); else context.lineTo(x, y);
+    }
+    context.stroke();
+    const maxFrequency = 1600;
+    const bins = Math.floor(maxFrequency / audioCtx.sampleRate * analyser.fftSize);
+    const width = canvas.width - split;
+    for (let i = 0; i < bins; i++) {
+      const height = frequencyData[i] / 255 * (canvas.height - 22);
+      context.fillStyle = '#ef4444';
+      context.fillRect(split + i / bins * width, canvas.height - height, Math.max(1, width / bins - 1), height);
+    }
+    for (const frequency of [640, 1024]) {
+      const x = split + frequency / maxFrequency * width;
+      context.strokeStyle = '#facc15'; context.setLineDash([3, 3]); context.beginPath();
+      context.moveTo(x, 18); context.lineTo(x, canvas.height); context.stroke(); context.setLineDash([]);
+      context.fillStyle = '#facc15'; context.font = '11px monospace';
+      context.fillText(`${frequency} Hz = ${frequency === 640 ? '0' : '1'}`, x - 25, 12);
+    }
+  }
+  draw();
+}
+window.addEventListener('DOMContentLoaded', () => loadPreset(0));
+
+</script>
+</body>
+</html>

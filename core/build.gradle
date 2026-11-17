@@ -5,7 +5,29 @@ java {
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 dependencies { testImplementation 'junit:junit:4.13.2' }
+sourceSets {
+    integrationTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
 test {
     if (System.getProperty('ews.fixtures')) systemProperty 'ews.fixtures', System.getProperty('ews.fixtures')
     testLogging { events 'failed', 'skipped'; exceptionFormat 'full' }
+}
+tasks.register('generateFixtures', Exec) {
+    workingDir rootProject.projectDir
+    commandLine 'node', 'scripts/generator-check.cjs'
+}
+tasks.register('verifyGenerator', Test) {
+    dependsOn tasks.named('generateFixtures')
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    workingDir rootProject.projectDir
+    systemProperty 'ews.fixtures', 'verification/local/generator-fixtures'
+    testLogging { events 'passed', 'failed'; exceptionFormat 'full' }
 }

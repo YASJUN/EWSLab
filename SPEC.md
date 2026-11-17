@@ -23,7 +23,7 @@
 - 新applicationId `xyz.ckkpd.ewsparserapp.lab` 可与原App并装；保留原包名作为源码命名空间。
 
 ## 技术与命令
-Java 17兼容源码，AGP 8.13.0，Gradle 8.14.3，Android compile/target SDK36，最低API29。使用本机已有版本；不升级系统工具链。
+Java 17兼容源码，AGP 8.13.0，Gradle 8.14.3，Android compile SDK37.0 / target37，最低API29。使用本机已有版本；不升级系统工具链。实际检查发现已安装的37.0平台是非预览版，因此从初选36调整为37，未通过关闭OldTargetApi规则绕过检查。AGP官方已测试上限36.1的兼容性提示保留在构建输出中；发布前需以匹配工具链和设备再验证。
 
 ```powershell
 .\gradlew.bat :core:test

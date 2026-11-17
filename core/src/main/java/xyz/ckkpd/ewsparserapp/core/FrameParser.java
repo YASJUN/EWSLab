@@ -39,6 +39,7 @@ public final class FrameParser {
         if (day < 1 || month < 1 || hour < 0 || year < 0) return;
         int[] maxDays = {0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
         if (day > maxDays[month]) return;
+        if (month == 2 && day == 29 && year % 2 == 1) return;
         boolean dateShifted = body.charAt(56) == '1', hourShifted = body.charAt(88) == '1';
         if (dateShifted && !hourShifted) return;
         EwsMessage.Kind kind = end ? EwsMessage.Kind.END : fixed.charAt(0) == '1'

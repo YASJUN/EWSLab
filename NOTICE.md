@@ -1,6 +1,6 @@
 # 来源与许可证
 
-本项目为独立的 EWSLab 开发项目，计划由使用者在自行创建的新仓库中发布；未配置Git远程，也不向原作者仓库提交或推送。
+本项目为独立的 EWSLab 开发项目，公开仓库为 [YASJUN/EWSLab](https://github.com/YASJUN/EWSLab)；Git远程 `origin` 指向该仓库，不向原作者仓库提交或推送。
 
 本地Git包含 `private-yusuke/EWSParserApp` 的15个原始提交，基线为 `e3473c48feb8cd6e94665232fb8f5c448d0ff2a5`，锚点 `upstream-reference-e3473c4`。原源码作者 public_yusuke 的 MIT 许可证及署名保留在 LICENSE。原始历史不代表原作者为此重写版背书。
 

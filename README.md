@@ -69,6 +69,6 @@ Windows 推荐入口（可处理本项目遇到的中文检出路径问题）：
 
 本项目目录是独立副本。保留了上游 `private-yusuke/EWSParserApp` 的 15 个原始提交；原始基线为 `e3473c48feb8cd6e94665232fb8f5c448d0ff2a5`，保存在 `upstream-reference` 分支和 `upstream-reference-e3473c4` 标签中。新增工作在 `main` 上按模块提交。
 
-没有配置 Git 远程，没有创建或推送 GitHub 仓库。若以后在自己新建的仓库发布，应保留 LICENSE 和 NOTICE。旧版自动创建 GitHub Release 的工作流已替换为仅手动触发、只读权限的验证工作流；此工作流尚未在 GitHub 上执行过。
+公开仓库：[YASJUN/EWSLab](https://github.com/YASJUN/EWSLab)。`origin` 指向这个独立仓库，继续分发时应保留 LICENSE 和 NOTICE。旧版自动创建 GitHub Release 的工作流已替换为仅手动触发、只读权限的验证工作流；此工作流尚未在 GitHub 上执行过。
 
 上游 MIT 版权声明继续保留，新增代码同样按 MIT 许可。参见 `LICENSE`、`NOTICE.md`。本项目不代表上游作者、NHK、总务省或 JMA 的认可。

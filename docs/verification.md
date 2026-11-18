@@ -1,6 +1,22 @@
 # 验证记录
 
-日期：2026-11-17。以下是本次实际执行结果；未将代码检查写成设备实测。
+以下按日期记录实际执行结果；不将代码检查写成设备实测。
+
+## 2026-11-18：v0.1.0 发布构建复核
+
+- 在独立输出目录重新执行 `:core:test :core:verifyGenerator :app:assembleRelease :app:lintRelease`，全部通过。
+- 核心 JUnit：52 项，0 失败、0 错误、0 跳过；联合测试 1 项通过，覆盖真实生成器 26 份 WAV、242 个主体。
+- `lint-results-release.xml` 无 issue；未增加 baseline 或关闭 `warningsAsErrors`。
+- release 输出元数据为应用 ID `xyz.ckkpd.ewsparserapp.lab`、版本名 `0.1.0`、版本号 `2`、最低 API 29。
+- 三份 README 的本地文件链接、另外两种语言的跳转、版本下载入口和安装包名已检查一致。
+- 本次仍保留 AGP 8.13.0／SDK 37.0、Windows 中文路径、SDK XML 版本、Java API 弃用和 Gradle 9 迁移相关提示。未做工具链升级或隐藏提示。
+- 签名和发布核对方法见 [releasing.md](releasing.md)。最终 APK 文件哈希随 Release 的 `SHA256SUMS.txt` 提供。
+- GitHub 仓库已公开并保留原始历史；仅手动触发的 GitHub Actions 工作流仍未执行。
+- 手机运行、真实麦克风链路及实体 EWS 接收器验收仍未执行。
+
+## 2026-11-17：初始验证
+
+以下小节记录初始验证时的状态，包括当时尚未配置远程或推送的事实。
 
 ## 已执行
 

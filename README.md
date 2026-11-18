@@ -1,12 +1,22 @@
 # EWSLab
 
+**简体中文** | [日本語](README.ja.md) | [English](README.en.md)
+
 独立的 Android 模拟音频 EWS（緊急警報放送）接收与调试项目，附离线 JMA 海啸报文音频生成器。适用 Android 10（API 29）及以上。
 
 这是保留上游历史的重写版，应用名和安装 ID 已分离，可与旧 EWSParserApp 并装。当前为 **0.1.0 实验版**；离线解码通过不等于手机声学链路或实体 EWS 接收器已经实测。
 
+## 下载与安装
+
+- [v0.1.0 预发布版：APK、离线生成器和 SHA-256 校验文件](https://github.com/YASJUN/EWSLab/releases/tag/v0.1.0)
+- Android 安装包：`EWSLab-0.1.0.apk`，应用 ID 为 `xyz.ckkpd.ewsparserapp.lab`。
+- APK 为独立发布密钥签名的 release 构建。若之前安装的是同应用 ID 的 debug 版，需要先卸载调试版；原版 EWSParserApp 使用不同应用 ID，可继续并装。
+- 根据 Android 提示允许所用浏览器或文件管理器安装此 APK；仅麦克风接收需要录音权限。App 界面目前为简体中文，三语支持适用于本 README。
+- 下载后可用附件 `SHA256SUMS.txt` 核对 APK 和生成器。签名、构建与发布步骤见 [发布说明](docs/releasing.md)。
+
 ## 使用
 
-1. 安装自行构建的 `EWSLab-debug.apk`。调试签名仅用于本地试用。
+1. 从上述 Release 下载并安装 `EWSLab-0.1.0.apk`，或自行构建 `EWSLab-debug.apk` 进行本地调试。
 2. 点击“导入 WAV 文件”，选择生成器导出的 PCM16 WAV；或点击“开始接收”，授予麦克风权限并播放测试音频。
 3. 查看单块候选／连续确认、地域、编码时间、两个保护位和六个原始 16 位字。
 4. 停止或离开应用前台会停止输入。历史记录只在内存中保留；旋转屏幕会结束当前会话并重建界面。
@@ -24,6 +34,7 @@
 - `docs/protocol.md`：协议、算法及来源。
 - `docs/verification.md`：实际验证结果、限制和设备验收方法。
 - `docs/privacy.md`：权限与隐私说明。
+- `docs/releasing.md`：发布构建、签名和校验步骤。
 
 ## 构建和测试
 
@@ -53,7 +64,7 @@ Windows 推荐入口（可处理本项目遇到的中文检出路径问题）：
 
 联合测试会调用 `node scripts/generator-check.cjs` 生成 26 份 WAV，再由同一接收核心逐字段检查 242 个主体。夹具写入被忽略的 `verification/local/`，无需提交大量二进制文件。失败不会被跳过或降级为成功。
 
-已保留 `warningsAsErrors` 的 lint 门禁，无 baseline。构建仍会报告两类已知工具提示：AGP 8.13.0 的官方测试上限为 SDK 36.1，而本机安装及当前目标为 SDK 37.0；Windows 中文路径需要 `android.overridePathCheck`。本次构建及 lint 实际通过，但不以此声称完成全部 Android 17 行为适配，发布前应升级并验证匹配的 AGP／SDK 工具链。没有隐藏这些提示。
+已保留 `warningsAsErrors` 的 lint 门禁，无 baseline。构建仍会报告两类已知工具提示：AGP 8.13.0 的官方测试上限为 SDK 36.1，而本机安装及当前目标为 SDK 37.0；Windows 中文路径需要 `android.overridePathCheck`。构建及 lint 实际通过，但不以此声称完成全部 Android 17 行为适配，后续稳定版发布前应升级并验证匹配的 AGP／SDK 工具链。没有隐藏这些提示。
 
 ## 与原实现的差异
 
